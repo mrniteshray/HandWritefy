@@ -3,28 +3,36 @@ package xcom.niteshray.xapps.handwritefy.ui.Screens
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,36 +57,96 @@ import xcom.niteshray.xapps.handwritefy.R
 import xcom.niteshray.xapps.handwritefy.ui.theme.gray
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-
+import coil.compose.rememberAsyncImagePainter
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PageScreen(navController: NavController){
-    var context = LocalContext.current
+fun PageScreen(navController: NavController) {
+    val context = LocalContext.current
     val composeViewRef = remember { mutableStateOf<ComposeView?>(null) }
     var fontSize by remember { mutableStateOf(12f) }
-    var lineHeight by remember { mutableStateOf(20f) }
+    var lineHeight by remember { mutableStateOf(11f) }
+    val handtext = remember { mutableStateOf("  \n  Q.  Write your assignments here") }
 
-    var handtext = remember { mutableStateOf("") }
-    Scaffold(
+    val uploadedPageUri = remember { mutableStateOf<Uri?>(null) }
+
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            uploadedPageUri.value = it
+        }
+    }
+
+    val bottomSheetState = rememberBottomSheetScaffoldState()
+
+
+    BottomSheetScaffold(
+        scaffoldState = bottomSheetState,
+        sheetPeekHeight = 100.dp,
+        sheetContainerColor = Color(0xFF1C1C1C),
+        sheetContent = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Customize Text",
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = "Font Size: ${fontSize.toInt()}", color = Color.White)
+                Slider(
+                    value = fontSize,
+                    onValueChange = { fontSize = it },
+                    valueRange = 4f..30f,
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(text = "Line Spacing: ${lineHeight.toInt()}", color = Color.White)
+                Slider(
+                    value = lineHeight,
+                    onValueChange = { lineHeight = it },
+                    valueRange = 4f..40f,
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White)
+                )
+
+                //Upload your image
+                GradientButton(text="Upload Your Page") {
+                    imagePickerLauncher.launch("image/*")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
-                title = { Text(text = "Handwritefy", fontSize = 26.sp , color = Color.White , fontFamily = FontFamily(
-                    Font(R.font.humanhand)
-                )) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = gray
-                )
+                title = {
+                    Text(
+                        text = "Handwritefy",
+                        fontSize = 26.sp,
+                        color = Color.White,
+                        fontFamily = FontFamily(Font(R.font.humanhand))
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = gray)
             )
         },
         containerColor = Color.Black
-    ){ innerpadding->
+    ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerpadding).verticalScroll(rememberScrollState()),
+            modifier = Modifier
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 130.dp), // space for bottom sheet
             horizontalAlignment = Alignment.CenterHorizontally,
-
-        ){
+        ) {
             Spacer(modifier = Modifier.height(5.dp))
             Text(
                 text = "Type, Print, Submit",
@@ -88,23 +156,26 @@ fun PageScreen(navController: NavController){
                 fontFamily = FontFamily(Font(R.font.humanhand2))
             )
             Spacer(modifier = Modifier.height(5.dp))
+
             AndroidView(
-                factory= { context ->
+                factory = { context ->
                     ComposeView(context).apply {
                         setContent {
-
-                            val paperPainter: Painter = painterResource(R.drawable.samplepaper)
-
+                            val painter: Painter = if (uploadedPageUri.value != null) {
+                                rememberAsyncImagePainter(model = uploadedPageUri.value)
+                            } else {
+                                painterResource(R.drawable.samplepaper)
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(paperPainter.intrinsicSize.width / paperPainter.intrinsicSize.height)
+                                    .aspectRatio(1f / 1.4142f)
                             ) {
                                 Image(
-                                    painter = paperPainter,
-                                    contentDescription = "",
+                                    painter = painter,
+                                    contentDescription = "Notebook Page",
                                     modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Fit
+                                    contentScale = ContentScale.Crop
                                 )
 
                                 BasicTextField(
@@ -117,8 +188,9 @@ fun PageScreen(navController: NavController){
                                         fontFamily = FontFamily(Font(R.font.humanhand2))
                                     ),
                                     modifier = Modifier
-                                        .padding(start = 30.dp, top = 16.dp, end = 5.dp, bottom = 10.dp)
-                                        .fillMaxSize()
+                                        .padding(start = 30.dp, top = 16.dp, end = 5.dp)
+                                        .fillMaxWidth()
+                                        .fillMaxHeight()
                                         .verticalScroll(rememberScrollState())
                                 )
                             }
@@ -130,40 +202,21 @@ fun PageScreen(navController: NavController){
             )
 
             Spacer(modifier = Modifier.height(10.dp))
-            Text(text = "Font Size: ${fontSize.toInt()}", color = Color.White)
-            Slider(
-                value = fontSize,
-                onValueChange = { fontSize = it },
-                valueRange = 4f..30f,
-                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(text = "Line Spacing: ${lineHeight.toInt()}", color = Color.White)
-            Slider(
-                value = lineHeight,
-                onValueChange = { lineHeight = it },
-                valueRange = 8f..40f,
-                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
             GradientButton(text = "Save Assignment", onClick = {
-                if (handtext.value.isNotEmpty()){
+                if (handtext.value.isNotEmpty()) {
                     composeViewRef.value?.let {
-                        var bitmap = it.drawToBitmap()
-                        saveBitmapToGallery(bitmap,context)
+                        val bitmap = it.drawToBitmap()
+                        saveBitmapToGallery(bitmap, context)
                         navController.popBackStack()
                     }
-                }else{
-                    Toast.makeText(context , "Write Something First",Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, "Write Something First", Toast.LENGTH_LONG).show()
                 }
             })
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
-
 }
+
 
 fun saveBitmapToGallery(bitmap: Bitmap, context: Context) {
     val filename = "handWritten_${System.currentTimeMillis()}.png"
