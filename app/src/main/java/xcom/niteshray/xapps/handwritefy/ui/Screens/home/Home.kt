@@ -1,4 +1,4 @@
-package xcom.niteshray.xapps.handwritefy.ui.Screens
+package xcom.niteshray.xapps.handwritefy.ui.Screens.home
 
 import android.content.Context
 import android.content.Intent
@@ -163,7 +163,6 @@ fun SavedImagesScreen(images: MutableState<List<Uri>> , context : Context) {
                         .clickable {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                 setDataAndType(imageUri, "image/*")
-                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                             }
                             context.startActivity(intent)
                         },
